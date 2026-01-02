@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MTR Duty Planner</title>
+    <!-- XLSX optional -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        :root { --primary: #007aff; --bg: #f2f2f7; --card: #ffffff; --text: #000000; --text-sec: #8e8e93; --border: #c6c6c8; --sep: #e5e5ea; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; background-color: var(--bg); color: var(--text); padding-bottom: 150px; }
+
+        .container { max-width: 600px; margin: 0 auto; min-height: 100vh; position: relative; }
+
+        /* Header */
+        .header { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 1000; border-bottom: 0.5px solid var(--border); padding: 0 16px; height: 50px; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 17px; font-weight: 600; margin: 0; }
+        .btn-link { border: none; background: none; color: var(--primary); font-size: 17px; font-weight: 400; cursor: pointer; padding: 10px 0; }
+
+        /* Panels */
+        .panel { background: var(--card); padding: 20px 16px; border-bottom: 0.5px solid var(--border); display: none; }
+        .panel.active { display: block; }
+
+        .form-group { margin-bottom: 20px; }
+        .label { display: block; font-size: 13px; font-weight: 500; color: var(--text-sec); text-transform: uppercase; margin-bottom: 8px; }
+        .input-text { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--sep); font-size: 17px; background: #fff; -webkit-appearance: none; color: #000; }
+
+        .duty-row { display: flex; align-items: center; margin-bottom: 12px; }
+        .day-label { width: 45px; font-size: 15px; font-weight: 600; color: var(--text-sec); }
+        .duty-input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--sep); font-size: 17px; font-family: monospace; font-weight: 600; -webkit-appearance: none; background: #fff; color: #000; }
+
+        .btn-row { display: flex; gap: 12px; margin-top: 30px; }
+        .btn { flex: 1; padding: 14px; border-radius: 12px; border: none; font-size: 17px; font-weight: 600; text-align: center; cursor: pointer; }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-secondary { background-color: #e5e5ea; color: var(--primary); position: relative; }
+        .file-input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+        /* List */
+        .list { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+        .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+        .card-header { padding: 16px; display: flex; justify-content: space-between; align-items: flex-start; }
+        .left-col h3 { margin: 0 0 4px 0; font-size: 19px; font-weight: 600; }
+        .date-badge { display: inline-block; color: var(--text-sec); font-size: 13px; font-weight: 500; }
+        .duty-id { display: block; font-size: 34px; font-weight: 700; font-family: -apple-system, monospace; letter-spacing: -1px; margin-top: 4px; color: #000; }
+        .rest-text { font-size: 24px; font-weight: 600; color: #c7c7cc; margin-top: 8px; display: block; }
+
+        .right-col { text-align: right; }
+        .time-btn { font-size: 22px; font-weight: 700; color: var(--primary); background: none; border: none; padding: 0; cursor: pointer; letter-spacing: -0.5px; }
+        .duration-text { font-size: 13px; font-weight: 500; color: var(--text-sec); margin-top: 4px; display: block; }
+
+        .edit-zone { background: #f2f2f7; padding: 10px; margin-top: 10px; border-radius: 8px; display: none; gap: 8px; justify-content: flex-end; }
+        .edit-zone.show { display: flex; }
+        .time-edit { padding: 8px; border-radius: 8px; border: 1px solid var(--sep); background: #fff; font-size: 16px; width: 90px; text-align: center; }
+
+        /* Tasks */
+        .task-list { border-top: 0.5px solid var(--sep); display: none; }
+        .task-list.show { display: block; }
+
+        .task-toggle { width: 100%; padding: 12px 16px; border: none; background: #fff; display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-sec); border-top: 0.5px solid var(--sep); }
+
+        .task-item { padding: 10px 16px; background: #fafafa; border-bottom: 0.5px solid var(--sep); display: flex; gap: 10px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d1d6; margin-top: 5px; flex-shrink: 0; }
+        .dot.blue { background: #007aff; }
+        .dot.orange { background: #ff9500; }
+        .dot.red { background: #ff3b30; }
+
+        .task-content { flex: 1; }
+        .task-desc { font-size: 15px; color: #000; line-height: 1.4; }
+        .task-time { font-size: 12px; color: var(--text-sec); font-family: monospace; display: block; margin-top: 2px; }
+
+        /* FAB */
+        .fab-wrapper { position: fixed; bottom: 40px; left: 20px; right: 20px; z-index: 999; }
+        .fab-btn { width: 100%; padding: 16px; border-radius: 16px; background: var(--primary); color: white; border: none; font-size: 17px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,122,255,0.4); }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>Duty Planner</h1>
+        <button class="btn-link" onclick="toggleView()">Edit</button>
+    </div>
+
+    <!-- Edit View -->
+    <div id="editView" class="panel active">
+        <div class="form-group">
+            <label class="label">Week Starting</label>
+            <input type="date" id="startDate" class="input-text" onchange="updateDate(this.value)">
+        </div>
+
+        <div id="inputContainer"></div>
+
+        <div class="btn-row">
+            <button class="btn btn-primary" onclick="saveAndShow()">Save & View</button>
+            <div class="btn btn-secondary">
+                Import Excel
+                <input type="file" class="file-input" accept=".xlsx" onchange="handleFile(this)">
+            </div>
+        </div>
+    </div>
+
+    <!-- List View -->
+    <div id="listView" class="list" style="display:none;"></div>
+
+    <div id="fab" class="fab-wrapper hidden">
+        <button class="fab-btn" onclick="exportCal()">Add to iPhone Calendar</button>
+    </div>
+</div>
+
+<script>
+    const DATABASE = {};
+    const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    // State
+    let state = {
+        start: new Date().toISOString().split('T')[0],
+        inputs: ['', '', '', '', '', '', ''],
+        roster: []
+    };
+
+    // Init
+    window.onload = function() {
+        // Load localstorage
+        const saved = localStorage.getItem('mtr_v13');
+        if(saved) {
+            try {
+                const p = JSON.parse(saved);
+                state.start = p.start || state.start;
+                state.inputs = p.inputs || state.inputs;
+            } catch(e){}
+        } else {
+            // Set next Monday
+            const d = new Date();
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day == 0 ? -6 : 1);
+            const mon = new Date(d.setDate(diff));
+            state.start = mon.toISOString().split('T')[0];
+        }
+
+        document.getElementById('startDate').value = state.start;
+        renderInputs();
+
+        if(state.inputs.some(x => x)) {
+            saveAndShow();
+        }
+    };
+
+    function renderInputs() {
+        const con = document.getElementById('inputContainer');
+        con.innerHTML = '';
+        state.inputs.forEach((val, i) => {
+            const div = document.createElement('div');
+            div.className = 'duty-row';
+            div.innerHTML = `<span class="day-label">${WEEKDAYS[i]}</span>`;
+            const inp = document.createElement('input');
+            inp.type = 'tel'; // Better keyboard
+            inp.className = 'duty-input';
+            inp.value = val;
+            inp.placeholder = '-';
+            inp.oninput = (e) => {
+                state.inputs[i] = e.target.value;
+                localStorage.setItem('mtr_v13', JSON.stringify(state));
+            };
+            div.appendChild(inp);
+            con.appendChild(div);
+        });
+    }
+
+    function updateDate(val) {
+        state.start = val;
+        localStorage.setItem('mtr_v13', JSON.stringify(state));
+    }
+
+    function toggleView() {
+        document.getElementById('editView').style.display = 'block';
+        document.getElementById('listView').style.display = 'none';
+        document.getElementById('fab').classList.add('hidden');
+        window.scrollTo(0,0);
+    }
+
+    function saveAndShow() {
+        document.getElementById('editView').style.display = 'none';
+        document.getElementById('listView').style.display = 'flex';
+        generate();
+        renderList();
+        window.scrollTo(0,0);
+
+        if(state.roster.some(x => !x.isRest)) {
+            document.getElementById('fab').classList.remove('hidden');
+        } else {
+            document.getElementById('fab').classList.add('hidden');
+        }
+    }
+
+    function generate() {
+        const start = new Date(state.start);
+        state.roster = state.inputs.map((v, i) => {
+            const cur = new Date(start);
+            cur.setDate(start.getDate() + i);
+            const dateStr = cur.toISOString().split('T')[0];
+            const dateLabel = `${cur.getDate()}/${cur.getMonth()+1}`;
+
+            const id = v ? v.trim() : '';
+            const isRest = !id || ['RD','OFF','0','AL','SH','-'].includes(id.toUpperCase());
+
+            let item = { i, day: WEEKDAYS[i], date: dateStr, dateLabel, id, isRest, on:'', off:'', dur:'?', ev:[], manual:false };
+
+            if(!isRest) {
+                let d = DATABASE[id];
+                // Fallback search
+                if(!d) {
+                    if(id.length==5) d = DATABASE[id.slice(-3)] || DATABASE[id.slice(-2)];
+                    if(!d) {
+                       const short = id.replace(/^3/,'');
+                       d = DATABASE[short] || DATABASE[id.slice(-3)];
+                    }
+                }
+
+                if(d) {
+                    item.on = d.book_on;
+                    item.off = d.book_off;
+                    item.ev = d.events;
+
+                    // Same time fix
+                    if(item.on == item.off && item.ev.length > 1) {
+                        const last = item.ev[item.ev.length-1];
+                        const m = last.desc.match(/([0-1]?[0-9]|2[0-3]):[0-5][0-9]/);
+                        if(m) item.off = m[0];
+                        else if(last.time.includes(':')) item.off = last.time;
+                    }
+                } else {
+                    item.manual = true;
+                }
+                item.dur = calcDur(item.on, item.off);
+            }
+            return item;
+        });
+    }
+
+    function calcDur(on, off) {
+        if(!on || !off || on==off) return '?';
+        try {
+            const [h1,m1] = on.split(':').map(Number);
+            const [h2,m2] = off.split(':').map(Number);
+            let m = (h2*60+m2) - (h1*60+m1);
+            if(m < 0) m += 1440;
+            return (m/60).toFixed(1);
+        } catch(e) { return '?'; }
+    }
+
+    function renderList() {
+        const list = document.getElementById('listView');
+        list.innerHTML = '';
+
+        if(state.roster.every(x => !x.id)) {
+            list.innerHTML = '<div style="text-align:center;padding:50px;color:#8e8e93;">No shifts</div>';
+            return;
+        }
+
+        state.roster.forEach((item, idx) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            let html = `<div class="card-header">
+                <div class="left-col">
+                    <h3>${item.day}</h3>
+                    <span class="date-badge">${item.dateLabel}</span>
+                    ${item.isRest ? '<span class="rest-text">☕ RD</span>' : `<span class="duty-id">${item.id}</span>`}
+                </div>`;
+
+            if(!item.isRest) {
+                const timeStr = (item.on && item.off) ? `${item.on} - ${item.off}` : 'Set Time';
+                html += `<div class="right-col">
+                    <button class="time-btn" onclick="toggleEdit(${idx})">${timeStr}</button>
+                    <span class="duration-text">⏱ ${item.dur} HRS</span>
+                    <div id="edit-${idx}" class="edit-zone">
+                        <input type="time" class="time-edit" value="${item.on}" onchange="updTime(${idx}, 'on', this.value)">
+                        <input type="time" class="time-edit" value="${item.off}" onchange="updTime(${idx}, 'off', this.value)">
+                    </div>
+                </div>`;
+            }
+            html += `</div>`;
+
+            if(!item.isRest && item.ev.length > 0) {
+                html += `<button class="task-toggle" onclick="toggleTask(${idx})">
+                    <span>${item.ev.length} TASKS</span>
+                    <span>▼</span>
+                </button>
+                <div id="task-${idx}" class="task-list">`;
+
+                item.ev.forEach(e => {
+                    let c = 'dot';
+                    const d = e.desc.toLowerCase();
+                    if(d.includes('start')||d.includes('report')) c+=' blue';
+                    else if(d.includes('break')||d.includes('meal')) c+=' orange';
+                    else if(d.includes('off')||d.includes('end')) c+=' red';
+
+                    html += `<div class="task-item">
+                        <div class="${c}"></div>
+                        <div class="task-content">
+                            <div class="task-desc">${e.desc}</div>
+                            <span class="task-time">${e.time}</span>
+                        </div>
+                    </div>`;
+                });
+                html += `</div>`;
+            }
+
+            card.innerHTML = html;
+            list.appendChild(card);
+        });
+    }
+
+    // Interactions
+    window.toggleEdit = (i) => {
+        const el = document.getElementById(`edit-${i}`);
+        el.classList.toggle('show');
+    };
+
+    window.updTime = (i, type, val) => {
+        state.roster[i][type] = val;
+        state.roster[i].dur = calcDur(state.roster[i].on, state.roster[i].off);
+        renderList();
+        // Re-open edit
+        setTimeout(() => document.getElementById(`edit-${i}`).classList.add('show'), 10);
+    };
+
+    window.toggleTask = (i) => {
+        document.getElementById(`task-${i}`).classList.toggle('show');
+    };
+
+    window.exportCal = () => {
+        let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//MTR Duty Planner//EN\n";
+        state.roster.forEach(x => {
+            if(x.isRest || !x.on || !x.off || x.on=='?') return;
+            const ds = x.date.replace(/-/g,'');
+            const t1 = x.on.replace(':','')+'00';
+            const t2 = x.off.replace(':','')+'00';
+            let de = ds;
+            if(parseInt(t2) < parseInt(t1)) {
+                const d = new Date(x.date);
+                d.setDate(d.getDate()+1);
+                de = d.toISOString().split('T')[0].replace(/-/g,'');
+            }
+
+            let desc = "";
+            x.ev.forEach(e => desc += `[${e.time}] ${e.desc}\n`);
+
+            ics += "BEGIN:VEVENT\n";
+            ics += `DTSTART;TZID=Asia/Hong_Kong:${ds}T${t1}\n`;
+            ics += `DTEND;TZID=Asia/Hong_Kong:${de}T${t2}\n`;
+            ics += `SUMMARY:Duty ${x.id}\n`;
+            ics += `DESCRIPTION:${desc}\n`;
+            ics += "END:VEVENT\n";
+        });
+        ics += "END:VCALENDAR";
+
+        const b = new Blob([ics], {type:'text/calendar'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(b);
+        a.download = 'roster.ics';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
+
+    // File Import
+    window.handleFile = (inp) => {
+        const f = inp.files[0];
+        if(!f) return;
+        const r = new FileReader();
+        r.onload = (e) => {
+            const wb = XLSX.read(e.target.result, {type:'array'});
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+
+            // Search logic
+            for(let row of json) {
+                if(!row) continue;
+                let cnt = 0;
+                row.forEach(c => { if(String(c).match(/^\d+$/) || ['RD','AL'].includes(c)) cnt++; });
+
+                if(cnt >= 3) {
+                     // Found row
+                     let idx = row.findIndex(c => String(c).match(/^\d+$/) || ['RD','AL'].includes(c));
+                     if(idx > -1) {
+                         const slice = row.slice(idx, idx+7);
+                         state.inputs = slice.map(x => x ? String(x) : '');
+                         while(state.inputs.length < 7) state.inputs.push('');
+                         localStorage.setItem('mtr_v13', JSON.stringify(state));
+                         renderInputs();
+                         alert('Success! Click Save & View.');
+                         return;
+                     }
+                }
+            }
+            alert('Could not find schedule in file.');
+        };
+        r.readAsArrayBuffer(f);
+    };
+
+</script>
+</body>
+</html>
