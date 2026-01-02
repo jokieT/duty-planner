@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MTR Duty Planner v30</title>
+    <title>MTR Duty Planner v31</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root { --primary: #007aff; --bg: #f2f2f7; --card: #ffffff; --text: #000000; --text-sec: #8e8e93; --border: #c6c6c8; --sep: #e5e5ea; }
@@ -55,25 +55,32 @@
         .fab-btn.sec { background: #fff; color: var(--primary); border: 1px solid #c6c6c8; }
         .hidden { display: none !important; }
 
-        #printView { display: none; padding: 20px; background: #fff; min-height: 100vh; position: absolute; top:0; left:0; width:100%; z-index:200; }
-        .print-table { width: 100%; border-collapse: collapse; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 12px; margin-top: 10px; }
-        .print-table th, .print-table td { border: 1px solid #000; padding: 8px; text-align: center; height: 45px; vertical-align: middle; }
+        #printView { display: none; padding: 0; background: #000; min-height: 100vh; position: absolute; top:0; left:0; width:100%; z-index:200; overflow-y:auto; }
+        .print-container { width: 100%; max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        /* Fix cut-off: Ensure table fits within container and has margin */
+        .print-table { width: 98%; border-collapse: collapse; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 12px; margin-top: 10px; border: 2px solid #000; }
+        .print-table th, .print-table td { border: 1px solid #000; padding: 8px 4px; text-align: center; height: 45px; vertical-align: middle; }
         .print-table th { background-color: #f0f0f0; font-weight: bold; }
-        .print-header { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 20px; }
+        .print-header { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 20px; width: 100%; }
         .cell-duty { font-weight: bold; font-size: 16px; }
         .cell-rest { color: #cc0000; font-weight: bold; font-size: 16px; }
         .cell-wk { background-color: #fff; }
         .cell-sat { background-color: #e6f3d9; }
         .cell-sun { background-color: #f2d9e6; }
-        .print-actions { margin-bottom: 20px; text-align: center; display: flex; gap: 10px; justify-content: center; }
-        .action-btn { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
-        .action-btn.close { background: #8e8e93; }
 
+        .print-actions { width: 100%; margin-bottom: 20px; text-align: center; display: flex; gap: 10px; justify-content: center; padding: 20px 0; background: #fff; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #eee; }
+        .action-btn { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .action-btn.close { background: #8e8e93; }
+        .action-btn.tg { background: #24A1DE; }
+
+        /* Print styles */
         @media print {
             body * { visibility: hidden; }
             #printView, #printView * { visibility: visible; }
-            #printView { position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
+            #printView { position: absolute; left: 0; top: 0; width: 100%; height: 100%; padding: 0; background: #fff; overflow: visible; }
+            .print-container { width: 100%; max-width: 100%; margin: 0; padding: 10px; box-shadow: none; display: block; }
             .print-actions { display: none; }
+            .print-table { width: 100%; margin: 0 auto; page-break-inside: avoid; }
         }
     </style>
 </head>
@@ -102,29 +109,32 @@
 
     <div id="listView" class="list" style="display:none;"></div>
 
+    <div id="printView">
+        <div class="print-container">
+            <div class="print-actions">
+                <button class="action-btn close" onclick="exitPrint()">Back</button>
+                <button class="action-btn" onclick="saveImage()">Save Image</button>
+                <button class="action-btn tg" onclick="shareTG()">Share TG</button>
+            </div>
+            <div id="printArea" style="width:100%; background:#fff; padding:10px; display:flex; flex-direction:column; align-items:center;">
+                <div class="print-header" id="printTitle">Duty of Week XX/2026</div>
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th style="width:60px;">Day</th>
+                            <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th>
+                        </tr>
+                    </thead>
+                    <tbody id="printBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <div id="manualLink" style="display:none;text-align:center;margin-top:20px;padding:20px;background:#fff;border-radius:12px;">
         <p>Download ready:</p>
         <a id="downloadAnchor" href="#" target="_blank">Click here to download ICS</a>
         <button onclick="document.getElementById('manualLink').style.display='none'" style="margin-top:10px;padding:8px 16px;background:#eee;border:none;border-radius:8px;">Close</button>
-    </div>
-
-    <div id="printView">
-        <div class="print-actions">
-            <button class="action-btn close" onclick="exitPrint()">Back</button>
-            <button class="action-btn" onclick="saveImage()">Save as Image</button>
-        </div>
-        <div id="printArea" style="background:#fff; padding: 20px; border-radius: 4px;">
-            <div class="print-header" id="printTitle">Duty of Week XX/2026</div>
-            <table class="print-table">
-                <thead>
-                    <tr>
-                        <th style="width:100px;">Day</th>
-                        <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th>
-                    </tr>
-                </thead>
-                <tbody id="printBody"></tbody>
-            </table>
-        </div>
     </div>
 
     <div id="fab" class="fab-wrapper hidden">
@@ -150,7 +160,7 @@
     };
 
     window.onload = function() {
-        const saved = localStorage.getItem('mtr_v30');
+        const saved = localStorage.getItem('mtr_v31');
         if(saved) {
             try {
                 const p = JSON.parse(saved);
@@ -176,11 +186,11 @@
             const div = document.createElement('div'); div.className = 'duty-row';
             div.innerHTML = `<span class="day-label">${WEEKDAYS[i]}</span>`;
             const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'duty-input'; inp.value = val; inp.placeholder = '-';
-            inp.oninput = (e) => { e.target.value = e.target.value.toUpperCase(); state.inputs[i] = e.target.value; localStorage.setItem('mtr_v30', JSON.stringify(state)); };
+            inp.oninput = (e) => { e.target.value = e.target.value.toUpperCase(); state.inputs[i] = e.target.value; localStorage.setItem('mtr_v31', JSON.stringify(state)); };
             div.appendChild(inp); con.appendChild(div);
         });
     }
-    function updateDate(val) { state.start = val; localStorage.setItem('mtr_v30', JSON.stringify(state)); }
+    function updateDate(val) { state.start = val; localStorage.setItem('mtr_v31', JSON.stringify(state)); }
     function toggleView() { document.getElementById('editView').style.display = 'block'; document.getElementById('listView').style.display = 'none'; document.getElementById('printView').style.display = 'none'; document.getElementById('fab').classList.add('hidden'); window.scrollTo(0,0); }
     function saveAndShow() {
         document.getElementById('editView').style.display = 'none'; document.getElementById('listView').style.display = 'flex';
@@ -252,10 +262,47 @@
         tbody.appendChild(trMeal);
     }
     function exitPrint() { document.getElementById('printView').style.display = 'none'; saveAndShow(); }
+
+    // Save Image Function with better boundaries
     function saveImage() {
         const element = document.getElementById("printArea");
-        html2canvas(element).then(canvas => { const link = document.createElement("a"); link.download = `Weekly_Roster_${state.start}.png`; link.href = canvas.toDataURL(); link.click(); });
+        const options = {
+            scale: 2, // Higher resolution
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            windowWidth: 1000 // Force width to prevent cut-off
+        };
+        html2canvas(element, options).then(canvas => { 
+            const link = document.createElement("a"); 
+            link.download = `Weekly_Roster_${state.start}.png`; 
+            link.href = canvas.toDataURL(); 
+            link.click(); 
+        });
     }
+
+    // Share Telegram
+    function shareTG() {
+        const element = document.getElementById("printArea");
+        html2canvas(element).then(canvas => {
+            canvas.toBlob(blob => {
+                const file = new File([blob], `Roster_${state.start}.png`, { type: "image/png" });
+                if (navigator.canShare && navigator.share) {
+                    navigator.share({
+                        files: [file],
+                        title: 'Weekly Roster',
+                        text: 'My Duty Roster for the week.'
+                    }).catch(console.error);
+                } else {
+                    alert("Sharing not supported on this browser. Image downloaded instead.");
+                    const link = document.createElement("a");
+                    link.download = `Weekly_Roster_${state.start}.png`;
+                    link.href = canvas.toDataURL();
+                    link.click();
+                }
+            });
+        });
+    }
+
     window.toggleEdit = (i) => document.getElementById(`edit-${i}`).classList.toggle('show');
     window.updTime = (i, type, val) => { state.roster[i][type] = val; state.roster[i].dur = calcDur(state.roster[i].on, state.roster[i].off); renderList(); };
     window.toggleTask = (i) => document.getElementById(`task-${i}`).classList.toggle('show');
