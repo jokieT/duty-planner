@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MTR Duty Planner v18</title>
+    <title>MTR Duty Planner v20</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #007aff; --bg: #f2f2f7; --card: #ffffff; --text: #000000; --text-sec: #8e8e93; --border: #c6c6c8; --sep: #e5e5ea; }
@@ -110,7 +110,7 @@
     };
 
     window.onload = function() {
-        const saved = localStorage.getItem('mtr_v18');
+        const saved = localStorage.getItem('mtr_v20');
         if(saved) {
             try {
                 const p = JSON.parse(saved);
@@ -143,7 +143,7 @@
             inp.placeholder = '-';
             inp.oninput = (e) => {
                 state.inputs[i] = e.target.value;
-                localStorage.setItem('mtr_v18', JSON.stringify(state));
+                localStorage.setItem('mtr_v20', JSON.stringify(state));
             };
             div.appendChild(inp);
             con.appendChild(div);
@@ -152,7 +152,7 @@
 
     function updateDate(val) {
         state.start = val;
-        localStorage.setItem('mtr_v18', JSON.stringify(state));
+        localStorage.setItem('mtr_v20', JSON.stringify(state));
     }
 
     function toggleView() {
@@ -190,30 +190,38 @@
             let item = { i, day: WEEKDAYS[i], date: dateStr, dateLabel, id, isRest, on:'', off:'', dur:'?', ev:[], manual:false };
 
             if(!isRest) {
-                // Lookup
+                // Lookup Priority: Exact -> Fuzzy Suffix
                 let d = DATABASE[id];
-
-                // Fuzzy Fallback
-                if (!d && id.length >= 2) {
-                    // Try last 3
-                    if (id.length >= 3) {
-                         d = DATABASE[id.slice(-3)];
-                    }
-                    // Try last 2
-                    if (!d) {
-                         d = DATABASE[id.slice(-2)];
-                    }
-                }
+                if (!d && id.length >= 2) d = DATABASE[id.slice(-3)] || DATABASE[id.slice(-2)];
 
                 if(d) {
                     item.on = d.book_on;
                     item.off = d.book_off;
                     item.ev = d.events;
-                    if(item.on == item.off && item.ev.length > 1) {
-                        const last = item.ev[item.ev.length-1];
-                        const m = last.desc.match(/([0-1]?[0-9]|2[0-3]):[0-5][0-9]/);
-                        if(m) item.off = m[0];
-                        else if(last.time.includes(':')) item.off = last.time;
+
+                    // Smart Logic to Fix "Crazy Durations"
+                    // If the last event time (book_off) is wildly different from the 2nd to last time,
+                    // and duration is > 14 hours, we check if there's a better end time.
+                    if(item.ev.length > 1) {
+                         // Find the last VALID time that isn't empty or garbage
+                         // Scan backwards
+                         let validEnd = item.off;
+                         for(let k=item.ev.length-1; k>=0; k--) {
+                             let e = item.ev[k];
+                             if(!e.desc || e.desc.trim() == "") {
+                                 // Empty description, likely garbage row -> ignore this time
+                                 continue; 
+                             } else {
+                                 // Found a valid event with description?
+                                 // Check if its time is valid
+                                 if(e.time && e.time != item.on) {
+                                     validEnd = e.time;
+                                     break; 
+                                 }
+                             }
+                         }
+                         // If computed validEnd is different, use it
+                         if(validEnd != item.off) item.off = validEnd;
                     }
                 } else {
                     item.manual = true;
@@ -317,13 +325,13 @@
                 d.setDate(d.getDate()+1);
                 de = d.toISOString().split('T')[0].replace(/-/g,'');
             }
-            let desc = "";
-            x.ev.forEach(e => desc += `[${e.time}] ${e.desc}\n`);
+            // Add Trigger for Alert
             ics += "BEGIN:VEVENT\n";
             ics += `DTSTART;TZID=Asia/Hong_Kong:${ds}T${t1}\n`;
             ics += `DTEND;TZID=Asia/Hong_Kong:${de}T${t2}\n`;
             ics += `SUMMARY:Duty ${x.id}\n`;
-            ics += `DESCRIPTION:${desc}\n`;
+            ics += `DESCRIPTION:Total: ${x.dur} HRS\n`;
+            ics += "BEGIN:VALARM\nTRIGGER:-PT30M\nACTION:DISPLAY\nDESCRIPTION:Duty Reminder\nEND:VALARM\n";
             ics += "END:VEVENT\n";
         });
         ics += "END:VCALENDAR";
