@@ -3,41 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MTR Duty Planner</title>
-    <!-- XLSX optional -->
+    <title>MTR Duty Planner v14</title>
+    <!-- XLSX -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
         :root { --primary: #007aff; --bg: #f2f2f7; --card: #ffffff; --text: #000000; --text-sec: #8e8e93; --border: #c6c6c8; --sep: #e5e5ea; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; background-color: var(--bg); color: var(--text); padding-bottom: 150px; }
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; background-color: var(--bg); color: var(--text); padding-bottom: 120px; }
 
-        .container { max-width: 600px; margin: 0 auto; min-height: 100vh; position: relative; }
+        .container { max-width: 600px; margin: 0 auto; min-height: 100vh; }
 
         /* Header */
-        .header { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 1000; border-bottom: 0.5px solid var(--border); padding: 0 16px; height: 50px; display: flex; align-items: center; justify-content: space-between; }
+        .header { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100; border-bottom: 0.5px solid var(--border); padding: 0 16px; height: 50px; display: flex; align-items: center; justify-content: space-between; }
         .header h1 { font-size: 17px; font-weight: 600; margin: 0; }
         .btn-link { border: none; background: none; color: var(--primary); font-size: 17px; font-weight: 400; cursor: pointer; padding: 10px 0; }
 
-        /* Panels */
-        .panel { background: var(--card); padding: 20px 16px; border-bottom: 0.5px solid var(--border); display: none; }
+        /* Edit Panel */
+        .panel { background: var(--card); padding: 20px 16px; display: none; }
         .panel.active { display: block; }
 
         .form-group { margin-bottom: 20px; }
         .label { display: block; font-size: 13px; font-weight: 500; color: var(--text-sec); text-transform: uppercase; margin-bottom: 8px; }
-        .input-text { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--sep); font-size: 17px; background: #fff; -webkit-appearance: none; color: #000; }
+        .input-text { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--sep); font-size: 17px; background: #fff; -webkit-appearance: none; }
 
         .duty-row { display: flex; align-items: center; margin-bottom: 12px; }
         .day-label { width: 45px; font-size: 15px; font-weight: 600; color: var(--text-sec); }
-        .duty-input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--sep); font-size: 17px; font-family: monospace; font-weight: 600; -webkit-appearance: none; background: #fff; color: #000; }
+        .duty-input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--sep); font-size: 17px; font-family: monospace; font-weight: 600; -webkit-appearance: none; background: #fff; }
 
         .btn-row { display: flex; gap: 12px; margin-top: 30px; }
         .btn { flex: 1; padding: 14px; border-radius: 12px; border: none; font-size: 17px; font-weight: 600; text-align: center; cursor: pointer; }
         .btn-primary { background-color: var(--primary); color: white; }
         .btn-secondary { background-color: #e5e5ea; color: var(--primary); position: relative; }
-        .file-input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .file-input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; }
 
-        /* List */
+        /* List View */
         .list { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
@@ -58,21 +58,18 @@
         /* Tasks */
         .task-list { border-top: 0.5px solid var(--sep); display: none; }
         .task-list.show { display: block; }
-
         .task-toggle { width: 100%; padding: 12px 16px; border: none; background: #fff; display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-sec); border-top: 0.5px solid var(--sep); }
-
         .task-item { padding: 10px 16px; background: #fafafa; border-bottom: 0.5px solid var(--sep); display: flex; gap: 10px; }
         .dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d1d6; margin-top: 5px; flex-shrink: 0; }
         .dot.blue { background: #007aff; }
         .dot.orange { background: #ff9500; }
         .dot.red { background: #ff3b30; }
-
         .task-content { flex: 1; }
         .task-desc { font-size: 15px; color: #000; line-height: 1.4; }
         .task-time { font-size: 12px; color: var(--text-sec); font-family: monospace; display: block; margin-top: 2px; }
 
         /* FAB */
-        .fab-wrapper { position: fixed; bottom: 40px; left: 20px; right: 20px; z-index: 999; }
+        .fab-wrapper { position: fixed; bottom: 40px; left: 20px; right: 20px; z-index: 99; }
         .fab-btn { width: 100%; padding: 16px; border-radius: 16px; background: var(--primary); color: white; border: none; font-size: 17px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,122,255,0.4); }
         .hidden { display: none !important; }
     </style>
@@ -91,9 +88,7 @@
             <label class="label">Week Starting</label>
             <input type="date" id="startDate" class="input-text" onchange="updateDate(this.value)">
         </div>
-
         <div id="inputContainer"></div>
-
         <div class="btn-row">
             <button class="btn btn-primary" onclick="saveAndShow()">Save & View</button>
             <div class="btn btn-secondary">
@@ -112,20 +107,25 @@
 </div>
 
 <script>
+    const RAW_DB = {};
+    // Normalize Keys Logic
     const DATABASE = {};
+    for (let k in RAW_DB) {
+        // Clean key: remove whitespace, ensure string
+        let cleanKey = String(k).trim();
+        DATABASE[cleanKey] = RAW_DB[k];
+    }
+
     const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    // State
     let state = {
         start: new Date().toISOString().split('T')[0],
         inputs: ['', '', '', '', '', '', ''],
         roster: []
     };
 
-    // Init
     window.onload = function() {
-        // Load localstorage
-        const saved = localStorage.getItem('mtr_v13');
+        const saved = localStorage.getItem('mtr_v14');
         if(saved) {
             try {
                 const p = JSON.parse(saved);
@@ -133,7 +133,6 @@
                 state.inputs = p.inputs || state.inputs;
             } catch(e){}
         } else {
-            // Set next Monday
             const d = new Date();
             const day = d.getDay();
             const diff = d.getDate() - day + (day == 0 ? -6 : 1);
@@ -143,10 +142,7 @@
 
         document.getElementById('startDate').value = state.start;
         renderInputs();
-
-        if(state.inputs.some(x => x)) {
-            saveAndShow();
-        }
+        if(state.inputs.some(x => x)) saveAndShow();
     };
 
     function renderInputs() {
@@ -157,13 +153,13 @@
             div.className = 'duty-row';
             div.innerHTML = `<span class="day-label">${WEEKDAYS[i]}</span>`;
             const inp = document.createElement('input');
-            inp.type = 'tel'; // Better keyboard
+            inp.type = 'tel'; 
             inp.className = 'duty-input';
             inp.value = val;
             inp.placeholder = '-';
             inp.oninput = (e) => {
                 state.inputs[i] = e.target.value;
-                localStorage.setItem('mtr_v13', JSON.stringify(state));
+                localStorage.setItem('mtr_v14', JSON.stringify(state));
             };
             div.appendChild(inp);
             con.appendChild(div);
@@ -172,7 +168,7 @@
 
     function updateDate(val) {
         state.start = val;
-        localStorage.setItem('mtr_v13', JSON.stringify(state));
+        localStorage.setItem('mtr_v14', JSON.stringify(state));
     }
 
     function toggleView() {
@@ -188,7 +184,6 @@
         generate();
         renderList();
         window.scrollTo(0,0);
-
         if(state.roster.some(x => !x.isRest)) {
             document.getElementById('fab').classList.remove('hidden');
         } else {
@@ -204,19 +199,38 @@
             const dateStr = cur.toISOString().split('T')[0];
             const dateLabel = `${cur.getDate()}/${cur.getMonth()+1}`;
 
-            const id = v ? v.trim() : '';
+            // Clean ID input aggressively
+            let id = v ? String(v).trim() : '';
             const isRest = !id || ['RD','OFF','0','AL','SH','-'].includes(id.toUpperCase());
 
             let item = { i, day: WEEKDAYS[i], date: dateStr, dateLabel, id, isRest, on:'', off:'', dur:'?', ev:[], manual:false };
 
             if(!isRest) {
+                // Lookup Logic
                 let d = DATABASE[id];
-                // Fallback search
+
+                // Try variants if direct lookup fails
                 if(!d) {
-                    if(id.length==5) d = DATABASE[id.slice(-3)] || DATABASE[id.slice(-2)];
-                    if(!d) {
-                       const short = id.replace(/^3/,'');
-                       d = DATABASE[short] || DATABASE[id.slice(-3)];
+                    if(id.length==5) {
+                         // Try last 3
+                         d = DATABASE[id.slice(-3)];
+                         // Try last 2
+                         if(!d) d = DATABASE[id.slice(-2)];
+                         // Try removing first digit (e.g. 37060 -> 7060, unlikely but possible)
+                         // Try removing prefix '3' (common pattern)
+                         if(!d && id.startsWith('3')) d = DATABASE[id.substring(1)]; 
+                    }
+                    // Try adding '3' prefix if input is short (e.g. 060 -> 3060?) No, usually other way around.
+                    // Try looking up purely by suffix in entire DB (slow but robust)
+                    if (!d) {
+                         // Fallback: search keys ending with this ID
+                         const suffix = id.length >= 3 ? id.slice(-3) : id;
+                         for(let k in DATABASE) {
+                             if(k.endsWith(suffix) && k.length > suffix.length) {
+                                 d = DATABASE[k];
+                                 break;
+                             }
+                         }
                     }
                 }
 
@@ -225,7 +239,6 @@
                     item.off = d.book_off;
                     item.ev = d.events;
 
-                    // Same time fix
                     if(item.on == item.off && item.ev.length > 1) {
                         const last = item.ev[item.ev.length-1];
                         const m = last.desc.match(/([0-1]?[0-9]|2[0-3]):[0-5][0-9]/);
@@ -233,7 +246,7 @@
                         else if(last.time.includes(':')) item.off = last.time;
                     }
                 } else {
-                    item.manual = true;
+                    item.manual = true; // Still not found
                 }
                 item.dur = calcDur(item.on, item.off);
             }
@@ -315,17 +328,14 @@
         });
     }
 
-    // Interactions
     window.toggleEdit = (i) => {
-        const el = document.getElementById(`edit-${i}`);
-        el.classList.toggle('show');
+        document.getElementById(`edit-${i}`).classList.toggle('show');
     };
 
     window.updTime = (i, type, val) => {
         state.roster[i][type] = val;
         state.roster[i].dur = calcDur(state.roster[i].on, state.roster[i].off);
         renderList();
-        // Re-open edit
         setTimeout(() => document.getElementById(`edit-${i}`).classList.add('show'), 10);
     };
 
@@ -368,7 +378,6 @@
         document.body.removeChild(a);
     };
 
-    // File Import
     window.handleFile = (inp) => {
         const f = inp.files[0];
         if(!f) return;
@@ -376,21 +385,17 @@
         r.onload = (e) => {
             const wb = XLSX.read(e.target.result, {type:'array'});
             const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
-
-            // Search logic
             for(let row of json) {
                 if(!row) continue;
                 let cnt = 0;
                 row.forEach(c => { if(String(c).match(/^\d+$/) || ['RD','AL'].includes(c)) cnt++; });
-
                 if(cnt >= 3) {
-                     // Found row
                      let idx = row.findIndex(c => String(c).match(/^\d+$/) || ['RD','AL'].includes(c));
                      if(idx > -1) {
                          const slice = row.slice(idx, idx+7);
                          state.inputs = slice.map(x => x ? String(x) : '');
                          while(state.inputs.length < 7) state.inputs.push('');
-                         localStorage.setItem('mtr_v13', JSON.stringify(state));
+                         localStorage.setItem('mtr_v14', JSON.stringify(state));
                          renderInputs();
                          alert('Success! Click Save & View.');
                          return;
