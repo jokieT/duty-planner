@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MTR Duty Planner v35</title>
+    <title>MTR Duty Planner v36</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root { --primary: #007aff; --bg: #f2f2f7; --card: #ffffff; --text: #000000; --text-sec: #8e8e93; --border: #c6c6c8; --sep: #e5e5ea; }
@@ -57,32 +57,13 @@
 
         /* PRINT VIEW CSS UPDATES */
         #printView { display: none; padding: 0; background: #000; min-height: 100vh; position: absolute; top:0; left:0; width:100%; z-index:200; overflow-y:auto; }
-        .print-container { 
-            width: 100%; 
-            max-width: 100%; 
-            margin: 0 auto; 
-            background: #fff; 
-            padding: 20px; 
-            box-sizing: border-box; 
-            min-height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-        }
-        .print-table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; 
-            font-size: 14px; 
-            margin-top: 10px; 
-            border: 2px solid #000; 
-        }
-        /* Increased padding and height for rows to stretch table vertically */
-        .print-table th, .print-table td { border: 1px solid #000; padding: 12px 8px; text-align: center; vertical-align: middle; height: 60px; }
-        .print-table th { background-color: #f0f0f0; font-weight: bold; height: 50px; }
-        .print-header { text-align: center; font-size: 28px; font-weight: bold; margin-bottom: 20px; width: 100%; }
-        .cell-duty { font-weight: bold; font-size: 18px; }
-        .cell-rest { color: #cc0000; font-weight: bold; font-size: 18px; }
+        .print-container { width: 100%; max-width: 100%; margin: 0 auto; background: #fff; padding: 20px; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        .print-table { width: 100%; border-collapse: collapse; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 16px; margin-top: 10px; border: 2px solid #000; }
+        .print-table th, .print-table td { border: 1px solid #000; padding: 12px 8px; text-align: center; vertical-align: middle; height: 75px; }
+        .print-table th { background-color: #f0f0f0; font-weight: bold; height: 50px; font-size: 18px; }
+        .print-header { text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 20px; width: 100%; }
+        .cell-duty { font-weight: bold; font-size: 22px; }
+        .cell-rest { color: #cc0000; font-weight: bold; font-size: 22px; }
         .cell-wk { background-color: #fff; }
         .cell-sat { background-color: #e6f3d9; }
         .cell-sun { background-color: #f2d9e6; }
@@ -96,9 +77,11 @@
         @media print {
             @page {
                 size: A4 landscape;
-                margin: 1cm; /* Add minimal margin */
+                margin: 0;
             }
-            body { 
+            html, body { 
+                width: 100%;
+                height: 100%;
                 padding: 0; 
                 margin: 0; 
                 background: white; 
@@ -112,30 +95,33 @@
                 width: 100%; 
                 height: 100%; 
                 padding: 0; 
+                margin: 0;
                 background: #fff; 
                 overflow: visible; 
             }
             .print-container { 
-                width: 50%; /* Strictly half page */
-                height: 95%; /* Fill almost full height */
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 50% !important; /* Force strict half page width */
+                min-height: 100vh;
                 margin: 0; 
-                padding: 0;
+                padding: 20px; /* Add some internal padding */
                 box-shadow: none; 
-                display: flex; /* Flex to align items */
+                display: flex;
                 flex-direction: column;
-                justify-content: flex-start; /* Start from top */
-                float: left; 
+                justify-content: flex-start;
             }
             .print-actions { display: none; }
             .print-table { 
                 width: 100%; 
-                font-size: 13pt; 
-                flex-grow: 1; /* Stretch to fill available space if needed, but height on TD handles it better */
+                font-size: 14pt; /* Print font size */
+                flex-grow: 1; 
                 page-break-inside: avoid; 
             }
             .print-header {
-                 margin-top: 0; /* Move title up */
-                 margin-bottom: 10px;
+                 margin-top: 10px; 
+                 margin-bottom: 20px;
             }
         }
     </style>
@@ -217,7 +203,7 @@
     };
 
     window.onload = function() {
-        const saved = localStorage.getItem('mtr_v35');
+        const saved = localStorage.getItem('mtr_v36');
         if(saved) {
             try {
                 const p = JSON.parse(saved);
@@ -251,12 +237,12 @@
             inp.oninput = (e) => { 
                 let v = e.target.value.toUpperCase(); 
                 state.inputs[i] = v;
-                localStorage.setItem('mtr_v35', JSON.stringify(state)); 
+                localStorage.setItem('mtr_v36', JSON.stringify(state)); 
             };
             div.appendChild(inp); con.appendChild(div);
         });
     }
-    function updateDate(val) { state.start = val; localStorage.setItem('mtr_v35', JSON.stringify(state)); }
+    function updateDate(val) { state.start = val; localStorage.setItem('mtr_v36', JSON.stringify(state)); }
     function toggleView() { document.getElementById('editView').style.display = 'block'; document.getElementById('listView').style.display = 'none'; document.getElementById('printView').style.display = 'none'; document.getElementById('fab').classList.add('hidden'); window.scrollTo(0,0); }
     function saveAndShow() {
         document.getElementById('editView').style.display = 'none'; document.getElementById('listView').style.display = 'flex';
