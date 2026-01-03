@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MTR Duty Planner v31</title>
+    <title>MTR Duty Planner v32</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root { --primary: #007aff; --bg: #f2f2f7; --card: #ffffff; --text: #000000; --text-sec: #8e8e93; --border: #c6c6c8; --sep: #e5e5ea; }
@@ -57,7 +57,6 @@
 
         #printView { display: none; padding: 0; background: #000; min-height: 100vh; position: absolute; top:0; left:0; width:100%; z-index:200; overflow-y:auto; }
         .print-container { width: 100%; max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
-        /* Fix cut-off: Ensure table fits within container and has margin */
         .print-table { width: 98%; border-collapse: collapse; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 12px; margin-top: 10px; border: 2px solid #000; }
         .print-table th, .print-table td { border: 1px solid #000; padding: 8px 4px; text-align: center; height: 45px; vertical-align: middle; }
         .print-table th { background-color: #f0f0f0; font-weight: bold; }
@@ -73,7 +72,6 @@
         .action-btn.close { background: #8e8e93; }
         .action-btn.tg { background: #24A1DE; }
 
-        /* Print styles */
         @media print {
             body * { visibility: hidden; }
             #printView, #printView * { visibility: visible; }
@@ -160,7 +158,7 @@
     };
 
     window.onload = function() {
-        const saved = localStorage.getItem('mtr_v31');
+        const saved = localStorage.getItem('mtr_v32');
         if(saved) {
             try {
                 const p = JSON.parse(saved);
@@ -181,16 +179,26 @@
 
     function showStats() { alert("Database: " + Object.keys(DATABASE).length + " duties."); }
     function renderInputs() {
-        const con = document.getElementById('inputContainer'); con.innerHTML = '';
+        const con = document.getElementById('inputContainer'); 
+        con.innerHTML = ''; // This forces re-render
         state.inputs.forEach((val, i) => {
             const div = document.createElement('div'); div.className = 'duty-row';
             div.innerHTML = `<span class="day-label">${WEEKDAYS[i]}</span>`;
-            const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'duty-input'; inp.value = val; inp.placeholder = '-';
-            inp.oninput = (e) => { e.target.value = e.target.value.toUpperCase(); state.inputs[i] = e.target.value; localStorage.setItem('mtr_v31', JSON.stringify(state)); };
+            const inp = document.createElement('input'); 
+            inp.type = 'text'; 
+            inp.className = 'duty-input'; 
+            inp.value = val; 
+            inp.placeholder = '-';
+            // FIX: DO NOT call renderInputs() here. Only update state.
+            inp.oninput = (e) => { 
+                let v = e.target.value.toUpperCase(); 
+                state.inputs[i] = v;
+                localStorage.setItem('mtr_v32', JSON.stringify(state)); 
+            };
             div.appendChild(inp); con.appendChild(div);
         });
     }
-    function updateDate(val) { state.start = val; localStorage.setItem('mtr_v31', JSON.stringify(state)); }
+    function updateDate(val) { state.start = val; localStorage.setItem('mtr_v32', JSON.stringify(state)); }
     function toggleView() { document.getElementById('editView').style.display = 'block'; document.getElementById('listView').style.display = 'none'; document.getElementById('printView').style.display = 'none'; document.getElementById('fab').classList.add('hidden'); window.scrollTo(0,0); }
     function saveAndShow() {
         document.getElementById('editView').style.display = 'none'; document.getElementById('listView').style.display = 'flex';
@@ -263,42 +271,17 @@
     }
     function exitPrint() { document.getElementById('printView').style.display = 'none'; saveAndShow(); }
 
-    // Save Image Function with better boundaries
     function saveImage() {
         const element = document.getElementById("printArea");
-        const options = {
-            scale: 2, // Higher resolution
-            useCORS: true,
-            backgroundColor: "#ffffff",
-            windowWidth: 1000 // Force width to prevent cut-off
-        };
-        html2canvas(element, options).then(canvas => { 
-            const link = document.createElement("a"); 
-            link.download = `Weekly_Roster_${state.start}.png`; 
-            link.href = canvas.toDataURL(); 
-            link.click(); 
-        });
+        const options = { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: 1000 };
+        html2canvas(element, options).then(canvas => { const link = document.createElement("a"); link.download = `Weekly_Roster_${state.start}.png`; link.href = canvas.toDataURL(); link.click(); });
     }
-
-    // Share Telegram
     function shareTG() {
         const element = document.getElementById("printArea");
         html2canvas(element).then(canvas => {
             canvas.toBlob(blob => {
                 const file = new File([blob], `Roster_${state.start}.png`, { type: "image/png" });
-                if (navigator.canShare && navigator.share) {
-                    navigator.share({
-                        files: [file],
-                        title: 'Weekly Roster',
-                        text: 'My Duty Roster for the week.'
-                    }).catch(console.error);
-                } else {
-                    alert("Sharing not supported on this browser. Image downloaded instead.");
-                    const link = document.createElement("a");
-                    link.download = `Weekly_Roster_${state.start}.png`;
-                    link.href = canvas.toDataURL();
-                    link.click();
-                }
+                if (navigator.canShare && navigator.share) { navigator.share({ files: [file], title: 'Weekly Roster', text: 'My Duty Roster for the week.' }).catch(console.error); } else { alert("Sharing not supported on this browser. Image downloaded instead."); const link = document.createElement("a"); link.download = `Weekly_Roster_${state.start}.png`; link.href = canvas.toDataURL(); link.click(); }
             });
         });
     }
@@ -307,8 +290,52 @@
     window.updTime = (i, type, val) => { state.roster[i][type] = val; state.roster[i].dur = calcDur(state.roster[i].on, state.roster[i].off); renderList(); };
     window.toggleTask = (i) => document.getElementById(`task-${i}`).classList.toggle('show');
     window.handleFile = (inp) => {}; 
-    window.getICSContent = () => { /* ... */ return ""; };
-    window.shareCal = () => { alert("Active in Full Version"); };
+
+    // RE-ENABLED ICS LOGIC
+    window.getICSContent = () => {
+        let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//MTR Duty Planner//EN\n";
+        state.roster.forEach(x => {
+            if(x.isRest || !x.on || !x.off || x.on=='?') return;
+            const ds = x.date.replace(/-/g,'');
+            const t1 = x.on.replace(':','')+'00';
+            const t2 = x.off.replace(':','')+'00';
+            let de = ds; 
+            // Handle overnight shifts (if off time < on time, assume next day)
+            if(parseInt(t2) < parseInt(t1)) { 
+                const d = new Date(x.date); 
+                d.setDate(d.getDate()+1); 
+                de = d.toISOString().split('T')[0].replace(/-/g,''); 
+            }
+            let desc = ""; 
+            if(x.note) desc += `Note: ${x.note}\n`;
+            x.ev.forEach(e => desc += `[${e.time}] ${e.desc}\n`);
+
+            ics += "BEGIN:VEVENT\n"; 
+            ics += `DTSTART;TZID=Asia/Hong_Kong:${ds}T${t1}\n`; 
+            ics += `DTEND;TZID=Asia/Hong_Kong:${de}T${t2}\n`; 
+            ics += `SUMMARY:Duty ${x.id}\n`; 
+            ics += `DESCRIPTION:${desc}\n`; 
+            ics += "BEGIN:VALARM\nTRIGGER:-PT30M\nACTION:DISPLAY\nDESCRIPTION:Duty Reminder\nEND:VALARM\n"; 
+            ics += "END:VEVENT\n";
+        });
+        ics += "END:VCALENDAR"; 
+        return ics;
+    };
+
+    window.shareCal = () => {
+        const ics = window.getICSContent();
+        const file = new File([ics], "roster.ics", { type: "text/calendar" });
+        if (navigator.canShare && navigator.share) { 
+            navigator.share({ files: [file], title: 'Duty Roster' }).catch(console.error); 
+        } else {
+            const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'}); 
+            const url = URL.createObjectURL(blob); 
+            const anchor = document.getElementById('downloadAnchor'); 
+            anchor.href = url; 
+            anchor.download = "roster.ics"; 
+            document.getElementById('manualLink').style.display = 'block'; 
+        }
+    };
 </script>
 </body>
 </html>
