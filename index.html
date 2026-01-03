@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MTR Duty Planner v32</title>
+    <title>MTR Duty Planner v34</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root { --primary: #007aff; --bg: #f2f2f7; --card: #ffffff; --text: #000000; --text-sec: #8e8e93; --border: #c6c6c8; --sep: #e5e5ea; }
@@ -55,14 +55,37 @@
         .fab-btn.sec { background: #fff; color: var(--primary); border: 1px solid #c6c6c8; }
         .hidden { display: none !important; }
 
+        /* PRINT VIEW CSS UPDATES */
         #printView { display: none; padding: 0; background: #000; min-height: 100vh; position: absolute; top:0; left:0; width:100%; z-index:200; overflow-y:auto; }
-        .print-container { width: 100%; max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
-        .print-table { width: 98%; border-collapse: collapse; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 12px; margin-top: 10px; border: 2px solid #000; }
-        .print-table th, .print-table td { border: 1px solid #000; padding: 8px 4px; text-align: center; height: 45px; vertical-align: middle; }
+        .print-container { 
+            width: 100%; 
+            max-width: 100%; 
+            margin: 0 auto; 
+            background: #fff; 
+            padding: 20px; 
+            box-sizing: border-box; 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
+
+        /* Table Style Optimized for readability */
+        .print-table { 
+            width: 100%; /* Default to full width for mobile view */
+            border-collapse: collapse; 
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; 
+            font-size: 14px; 
+            margin-top: 10px; 
+            border: 2px solid #000; 
+        }
+        .print-table th, .print-table td { border: 1px solid #000; padding: 12px 8px; text-align: center; vertical-align: middle; }
         .print-table th { background-color: #f0f0f0; font-weight: bold; }
-        .print-header { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 20px; width: 100%; }
-        .cell-duty { font-weight: bold; font-size: 16px; }
-        .cell-rest { color: #cc0000; font-weight: bold; font-size: 16px; }
+        .print-header { text-align: center; font-size: 28px; font-weight: bold; margin-bottom: 20px; width: 100%; }
+        .cell-duty { font-weight: bold; font-size: 18px; }
+        .cell-rest { color: #cc0000; font-weight: bold; font-size: 18px; }
+
+        /* Color coding */
         .cell-wk { background-color: #fff; }
         .cell-sat { background-color: #e6f3d9; }
         .cell-sun { background-color: #f2d9e6; }
@@ -71,14 +94,45 @@
         .action-btn { padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
         .action-btn.close { background: #8e8e93; }
         .action-btn.tg { background: #24A1DE; }
+        .action-btn.prt { background: #34c759; }
 
         @media print {
+            @page {
+                size: A4 landscape;
+                margin: 0; /* Remove default margins to control manually */
+            }
+            body { 
+                padding: 0; 
+                margin: 0; 
+                background: white; 
+            }
             body * { visibility: hidden; }
             #printView, #printView * { visibility: visible; }
-            #printView { position: absolute; left: 0; top: 0; width: 100%; height: 100%; padding: 0; background: #fff; overflow: visible; }
-            .print-container { width: 100%; max-width: 100%; margin: 0; padding: 10px; box-shadow: none; display: block; }
+            #printView { 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 100%; 
+                height: 100%; 
+                padding: 0; 
+                background: #fff; 
+                overflow: visible; 
+            }
+            .print-container { 
+                width: 50%; /* Occupy half width (A5 size on A4 Landscape) */
+                height: 100%;
+                margin: 0; 
+                padding: 20px; 
+                box-shadow: none; 
+                display: block; 
+                float: left; /* Align to left */
+            }
             .print-actions { display: none; }
-            .print-table { width: 100%; margin: 0 auto; page-break-inside: avoid; }
+            .print-table { 
+                width: 100%; 
+                font-size: 12pt; /* Better font size for print */
+                page-break-inside: avoid; 
+            }
         }
     </style>
 </head>
@@ -111,6 +165,7 @@
         <div class="print-container">
             <div class="print-actions">
                 <button class="action-btn close" onclick="exitPrint()">Back</button>
+                <button class="action-btn prt" onclick="window.print()">Print (PDF)</button>
                 <button class="action-btn" onclick="saveImage()">Save Image</button>
                 <button class="action-btn tg" onclick="shareTG()">Share TG</button>
             </div>
@@ -158,7 +213,7 @@
     };
 
     window.onload = function() {
-        const saved = localStorage.getItem('mtr_v32');
+        const saved = localStorage.getItem('mtr_v34');
         if(saved) {
             try {
                 const p = JSON.parse(saved);
@@ -180,7 +235,7 @@
     function showStats() { alert("Database: " + Object.keys(DATABASE).length + " duties."); }
     function renderInputs() {
         const con = document.getElementById('inputContainer'); 
-        con.innerHTML = ''; // This forces re-render
+        con.innerHTML = '';
         state.inputs.forEach((val, i) => {
             const div = document.createElement('div'); div.className = 'duty-row';
             div.innerHTML = `<span class="day-label">${WEEKDAYS[i]}</span>`;
@@ -189,16 +244,15 @@
             inp.className = 'duty-input'; 
             inp.value = val; 
             inp.placeholder = '-';
-            // FIX: DO NOT call renderInputs() here. Only update state.
             inp.oninput = (e) => { 
                 let v = e.target.value.toUpperCase(); 
                 state.inputs[i] = v;
-                localStorage.setItem('mtr_v32', JSON.stringify(state)); 
+                localStorage.setItem('mtr_v34', JSON.stringify(state)); 
             };
             div.appendChild(inp); con.appendChild(div);
         });
     }
-    function updateDate(val) { state.start = val; localStorage.setItem('mtr_v32', JSON.stringify(state)); }
+    function updateDate(val) { state.start = val; localStorage.setItem('mtr_v34', JSON.stringify(state)); }
     function toggleView() { document.getElementById('editView').style.display = 'block'; document.getElementById('listView').style.display = 'none'; document.getElementById('printView').style.display = 'none'; document.getElementById('fab').classList.add('hidden'); window.scrollTo(0,0); }
     function saveAndShow() {
         document.getElementById('editView').style.display = 'none'; document.getElementById('listView').style.display = 'flex';
@@ -232,7 +286,7 @@
         state.roster.forEach((item, idx) => {
             const card = document.createElement('div'); card.className = 'card';
             let html = `<div class="card-header"><div class="left-col"><h3>${item.day}</h3><span class="date-badge">${item.dateLabel}</span>${item.isRest ? '<span class="rest-text">☕ RD</span>' : `<span class="duty-id">${item.id}</span>`}</div>`;
-            if(!item.isRest) html += `<div class="right-col"><button class="time-btn" onclick="toggleEdit(${idx})">${(item.on && item.off) ? `${item.on} - ${item.off}` : 'Set Time'}</button><span class="duration-text">⏱ ${item.dur} HRS${item.note ? ' ('+item.note+')' : ''}</span><div id="edit-${idx}" class="edit-zone"><input type="time" class="time-edit" value="${item.on}" onchange="updTime(${idx}, 'on', this.value)"><input type="time" class="time-edit" value="${item.off}" onchange="updTime(${idx}, 'off', this.value)"></div></div>`;
+            if(!item.isRest) html += `<div class="right-col"><button class="time-btn" id="time-btn-${idx}" onclick="toggleEdit(${idx})">${(item.on && item.off) ? `${item.on} - ${item.off}` : 'Set Time'}</button><span class="duration-text" id="dur-text-${idx}">⏱ ${item.dur} HRS${item.note ? ' ('+item.note+')' : ''}</span><div id="edit-${idx}" class="edit-zone"><input type="time" class="time-edit" value="${item.on}" onchange="updTime(${idx}, 'on', this.value)"><input type="time" class="time-edit" value="${item.off}" onchange="updTime(${idx}, 'off', this.value)"></div></div>`;
             html += `</div>`;
             if(!item.isRest && item.ev.length > 0) {
                  html += `<button class="task-toggle" onclick="toggleTask(${idx})"><span>${item.ev.length} TASKS</span><span>▼</span></button><div id="task-${idx}" class="task-list">`;
@@ -273,8 +327,21 @@
 
     function saveImage() {
         const element = document.getElementById("printArea");
-        const options = { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: 1000 };
-        html2canvas(element, options).then(canvas => { const link = document.createElement("a"); link.download = `Weekly_Roster_${state.start}.png`; link.href = canvas.toDataURL(); link.click(); });
+        // Adjusted options for high-res output suitable for A4 print
+        // A4 Landscape at 300dpi is approx 3508px width.
+        // We want the content to be half of that, so maybe render at a specific width.
+        const options = { 
+            scale: 2, 
+            useCORS: true, 
+            backgroundColor: "#ffffff", 
+            windowWidth: 1200 // Force a reasonable desktop width for the table
+        };
+        html2canvas(element, options).then(canvas => { 
+            const link = document.createElement("a"); 
+            link.download = `Weekly_Roster_${state.start}.png`; 
+            link.href = canvas.toDataURL(); 
+            link.click(); 
+        });
     }
     function shareTG() {
         const element = document.getElementById("printArea");
@@ -287,11 +354,21 @@
     }
 
     window.toggleEdit = (i) => document.getElementById(`edit-${i}`).classList.toggle('show');
-    window.updTime = (i, type, val) => { state.roster[i][type] = val; state.roster[i].dur = calcDur(state.roster[i].on, state.roster[i].off); renderList(); };
+
+    // Updated updTime (from V33)
+    window.updTime = (i, type, val) => { 
+        state.roster[i][type] = val; 
+        state.roster[i].dur = calcDur(state.roster[i].on, state.roster[i].off); 
+        const timeBtn = document.getElementById(`time-btn-${i}`);
+        const durText = document.getElementById(`dur-text-${i}`);
+        const item = state.roster[i];
+        if(timeBtn) { timeBtn.innerText = (item.on && item.off) ? `${item.on} - ${item.off}` : 'Set Time'; }
+        if(durText) { durText.innerText = `⏱ ${item.dur} HRS${item.note ? ' ('+item.note+')' : ''}`; }
+    };
+
     window.toggleTask = (i) => document.getElementById(`task-${i}`).classList.toggle('show');
     window.handleFile = (inp) => {}; 
 
-    // RE-ENABLED ICS LOGIC
     window.getICSContent = () => {
         let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//MTR Duty Planner//EN\n";
         state.roster.forEach(x => {
@@ -300,7 +377,6 @@
             const t1 = x.on.replace(':','')+'00';
             const t2 = x.off.replace(':','')+'00';
             let de = ds; 
-            // Handle overnight shifts (if off time < on time, assume next day)
             if(parseInt(t2) < parseInt(t1)) { 
                 const d = new Date(x.date); 
                 d.setDate(d.getDate()+1); 
