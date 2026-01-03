@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MTR Duty Planner v37</title>
+    <title>MTR Duty Planner v38</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root { --primary: #007aff; --bg: #f2f2f7; --card: #ffffff; --text: #000000; --text-sec: #8e8e93; --border: #c6c6c8; --sep: #e5e5ea; }
@@ -60,8 +60,8 @@
         .print-container { width: 100%; max-width: 100%; margin: 0 auto; background: #fff; padding: 20px; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
         .print-table { width: 100%; border-collapse: collapse; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 14px; margin-top: 10px; border: 2px solid #000; }
         .print-table th, .print-table td { border: 1px solid #000; padding: 8px 6px; text-align: center; vertical-align: middle; }
-        .print-table th { background-color: #f0f0f0; font-weight: bold; font-size: 13px; }
-        .print-header { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 10px; width: 100%; }
+        .print-table th { background-color: #f0f0f0; font-weight: bold; font-size: 14px; }
+        .print-header { text-align: center; font-size: 26px; font-weight: bold; margin-bottom: 10px; width: 100%; }
         .cell-duty { font-weight: bold; font-size: 16px; }
         .cell-rest { color: #cc0000; font-weight: bold; font-size: 16px; }
         .cell-wk { background-color: #fff; }
@@ -112,20 +112,22 @@
             .print-actions { display: none; }
             .print-table { 
                 width: 100%; 
-                font-size: 11pt;
+                font-size: 14pt; /* Increased base font size */
+                font-weight: bold; /* Make ALL text bold by default */
                 table-layout: fixed; /* Force equal column widths */
             }
             .print-table th, .print-table td {
                 padding: 6px 4px;
-                font-size: 11pt;
+                font-size: 14pt; /* Explicitly large */
+                font-weight: bold; /* Explicitly bold */
             }
             .print-header {
                  margin-top: 0; 
                  margin-bottom: 8px;
-                 font-size: 20pt;
+                 font-size: 22pt;
             }
-            .cell-duty { font-size: 13pt; }
-            .cell-rest { font-size: 13pt; }
+            .cell-duty { font-size: 16pt; }
+            .cell-rest { font-size: 16pt; }
         }
     </style>
 </head>
@@ -206,7 +208,7 @@
     };
 
     window.onload = function() {
-        const saved = localStorage.getItem('mtr_v37');
+        const saved = localStorage.getItem('mtr_v38');
         if(saved) {
             try {
                 const p = JSON.parse(saved);
@@ -240,12 +242,12 @@
             inp.oninput = (e) => { 
                 let v = e.target.value.toUpperCase(); 
                 state.inputs[i] = v;
-                localStorage.setItem('mtr_v37', JSON.stringify(state)); 
+                localStorage.setItem('mtr_v38', JSON.stringify(state)); 
             };
             div.appendChild(inp); con.appendChild(div);
         });
     }
-    function updateDate(val) { state.start = val; localStorage.setItem('mtr_v37', JSON.stringify(state)); }
+    function updateDate(val) { state.start = val; localStorage.setItem('mtr_v38', JSON.stringify(state)); }
     function toggleView() { document.getElementById('editView').style.display = 'block'; document.getElementById('listView').style.display = 'none'; document.getElementById('printView').style.display = 'none'; document.getElementById('fab').classList.add('hidden'); window.scrollTo(0,0); }
     function saveAndShow() {
         document.getElementById('editView').style.display = 'none'; document.getElementById('listView').style.display = 'flex';
@@ -301,7 +303,7 @@
                 const td = document.createElement('td');
                 if(i==5) td.className = 'cell-sat'; else if(i==6) td.className = 'cell-sun'; else td.className = 'cell-wk';
                 if(type === 'Date') td.innerText = item.dateLabel;
-                else if(type === 'Duty No.') { if(item.isRest) td.innerHTML = '<span class="cell-rest">RD</span>'; else { td.className += ' cell-duty'; td.innerText = item.id; if(item.note) td.innerHTML += `<br><span style="font-size:10px;font-weight:normal;">${item.note}</span>`; } }
+                else if(type === 'Duty No.') { if(item.isRest) td.innerHTML = '<span class="cell-rest">RD</span>'; else { td.className += ' cell-duty'; td.innerText = item.id; if(item.note) td.innerHTML += `<br><span style="font-size:12px;font-weight:normal;">${item.note}</span>`; } }
                 else if(type === 'Book On') td.innerText = item.isRest ? '' : (item.on || '');
                 else if(type === 'Book Off') td.innerText = item.isRest ? '' : (item.off || '');
                 else if(type === 'Work Hrs') td.innerText = item.isRest ? '' : (item.dur || '');
