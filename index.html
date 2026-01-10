@@ -223,6 +223,26 @@
         }
     }
     /* ===== END v43 STYLES ===== */
+
+    /* === Custom print tuning for A4 half-fold === */
+    #printArea {
+        padding-top: 5px !important;   /* 盡量貼頂 */
+    }
+    .print-header {
+        font-size: 32px !important;
+        margin-bottom: 4px !important;
+    }
+    .print-table th,
+    .print-table td {
+        font-size: 22px !important;    /* 放大字體 */
+        height: 60px !important;       /* 拉高列高 */
+        padding: 4px 6px !important;
+    }
+    @media print {
+        body { margin: 0; padding: 0; }
+        #printView { display: block !important; }
+    }
+    /* === End custom print tuning === */
 </style>
 </head>
 <body>
@@ -254,7 +274,7 @@
         <div class="print-container">
             <div class="print-actions">
                 <button class="action-btn close" onclick="exitPrint()">Back</button>
-                <button class="action-btn prt" onclick="window.print()">Print (PDF)</button>
+                <button class="action-btn prt" onclick="document.getElementById('printView').style.display='block'; window.print()">Print (PDF)</button>
                 <button class="action-btn" onclick="saveImage()">Save Image</button>
                 <button class="action-btn tg" onclick="shareTG()">Share TG</button>
             </div>
