@@ -463,22 +463,43 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         }
     };
 
-    // --- HELPER FUNCTIONS FOR PRINT LOGIC ---
-    // Re-implementing basic time calc because we can't rely on scope
+    // --- FIXED HELPERS FOR TIME PARSING ---
+    function _parseTime(t) {
+        if (!t) return null;
+        t = String(t).trim();
+        // If already HH:MM
+        if (t.includes(':')) {
+            const p = t.split(':');
+            return { h: parseInt(p[0]), m: parseInt(p[1]), str: t };
+        }
+        // If HHMM
+        if (t.length >= 3) {
+            const h = t.substring(0, t.length - 2);
+            const m = t.substring(t.length - 2);
+            return { h: parseInt(h), m: parseInt(m), str: h + ':' + m };
+        }
+        return null;
+    }
+
     function _calcDur(on, off) {
-        if (!on || !off) return '';
-        let h1 = parseInt(on.split(':')[0]), m1 = parseInt(on.split(':')[1]);
-        let h2 = parseInt(off.split(':')[0]), m2 = parseInt(off.split(':')[1]);
-        if (h2 < h1) h2 += 24;
-        let diff = (h2*60 + m2) - (h1*60 + m1);
-        let h = Math.floor(diff/60);
+        const t1 = _parseTime(on);
+        const t2 = _parseTime(off);
+        if (!t1 || !t2) return '';
+
+        let m1 = t1.h * 60 + t1.m;
+        let m2 = t2.h * 60 + t2.m;
+
+        if (m2 < m1) m2 += 24 * 60; // Overnight
+
+        let diff = m2 - m1;
+        let h = Math.floor(diff / 60);
         let m = diff % 60;
-        return h + 'h' + (m>0 ? m : '');
+        return h + 'h' + (m > 0 ? m : '');
     }
 
     function _formatTime(t) {
-        if (!t || t.length < 4) return '';
-        return t.substring(0,2) + ':' + t.substring(2,4);
+        const pt = _parseTime(t);
+        return pt ? pt.str : '';
     }
 
     function _getWeekNumber(d) {
@@ -495,7 +516,6 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         document.getElementById('printView').style.display = 'block';
         document.body.style.overflow = 'hidden';
 
-        // 1. Get Date
         let d;
         if (state.start) {
             d = new Date(state.start);
@@ -506,8 +526,6 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         const weekNum = _getWeekNumber(d);
         document.getElementById('printTitle').innerText = `Duty of Week ${weekNum}/${d.getFullYear()}`;
 
-        // 2. Re-construct Roster Data from Inputs
-        // state.inputs should contain the 7 IDs
         const rosterData = state.inputs.map(val => {
             val = (val || '').trim().toUpperCase();
             let item = { id: val, on: '', off: '', dur: '', isRest: false };
@@ -516,14 +534,14 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
                 item.isRest = true;
             } else if (val && RAW_DB[val]) {
                 const r = RAW_DB[val];
-                item.on = _formatTime(r.book_on || r.bookon); // Handle potential key diffs
+                // Use FIXED helpers
+                item.on = _formatTime(r.book_on || r.bookon); 
                 item.off = _formatTime(r.book_off || r.bookoff);
-                item.dur = _calcDur(item.on, item.off);
+                item.dur = _calcDur(item.on, item.off); // Use FIXED calcDur
             }
             return item;
         });
 
-        // 3. Render Table
         const tbody = document.getElementById('printBody');
         tbody.innerHTML = '';
 
@@ -608,6 +626,21 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         link.download = 'WeeklyRoster.png';
         link.href = canvas.toDataURL();
         link.click();
+    }
+
+    function exitPrint() {
+        document.getElementById('printView').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    function saveImage() {
+        const element = document.getElementById('printArea');
+        html2canvas(element, { scale: 2 }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'Roster.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
     }
 
 </script>
