@@ -463,6 +463,31 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         }
     };
 
+    // --- HELPER FUNCTIONS FOR PRINT LOGIC ---
+    // Re-implementing basic time calc because we can't rely on scope
+    function _calcDur(on, off) {
+        if (!on || !off) return '';
+        let h1 = parseInt(on.split(':')[0]), m1 = parseInt(on.split(':')[1]);
+        let h2 = parseInt(off.split(':')[0]), m2 = parseInt(off.split(':')[1]);
+        if (h2 < h1) h2 += 24;
+        let diff = (h2*60 + m2) - (h1*60 + m1);
+        let h = Math.floor(diff/60);
+        let m = diff % 60;
+        return h + 'h' + (m>0 ? m : '');
+    }
+
+    function _formatTime(t) {
+        if (!t || t.length < 4) return '';
+        return t.substring(0,2) + ':' + t.substring(2,4);
+    }
+
+    function _getWeekNumber(d) {
+        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+        var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+        var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+        return weekNo;
+    }
 
     // --- OVERRIDES FOR PRINT & SHARE ---
 
@@ -470,11 +495,35 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         document.getElementById('printView').style.display = 'block';
         document.body.style.overflow = 'hidden';
 
-        // Update Header
-        const d = state.start;
-        const weekNum = getWeekNumber(d);
+        // 1. Get Date
+        let d;
+        if (state.start) {
+            d = new Date(state.start);
+        } else {
+            d = new Date();
+        }
+
+        const weekNum = _getWeekNumber(d);
         document.getElementById('printTitle').innerText = `Duty of Week ${weekNum}/${d.getFullYear()}`;
 
+        // 2. Re-construct Roster Data from Inputs
+        // state.inputs should contain the 7 IDs
+        const rosterData = state.inputs.map(val => {
+            val = (val || '').trim().toUpperCase();
+            let item = { id: val, on: '', off: '', dur: '', isRest: false };
+
+            if (['R','L','AL','SL','PH','VL','OFF'].includes(val)) {
+                item.isRest = true;
+            } else if (val && RAW_DB[val]) {
+                const r = RAW_DB[val];
+                item.on = _formatTime(r.book_on || r.bookon); // Handle potential key diffs
+                item.off = _formatTime(r.book_off || r.bookoff);
+                item.dur = _calcDur(item.on, item.off);
+            }
+            return item;
+        });
+
+        // 3. Render Table
         const tbody = document.getElementById('printBody');
         tbody.innerHTML = '';
 
@@ -482,20 +531,20 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
 
         rowTypes.forEach(type => {
             const tr = document.createElement('tr');
-            const th = document.createElement('td'); // Using td for th in print logic for border consistency
+            const th = document.createElement('td'); 
             th.innerText = type;
             th.style.backgroundColor = '#f0f0f0';
             th.style.fontWeight = 'bold';
             tr.appendChild(th);
 
-            state.roster.forEach((item, i) => {
+            rosterData.forEach((item, i) => {
                 const td = document.createElement('td');
                 if(i===5) td.className = 'cell-sat';
                 else if(i===6) td.className = 'cell-sun';
                 else td.className = 'cell-wk';
 
                 if (type === 'Date') {
-                    const curr = new Date(state.start);
+                    const curr = new Date(d);
                     curr.setDate(curr.getDate() + i);
                     td.innerText = `${curr.getDate()}/${curr.getMonth()+1}`;
                 } else if (type === 'Duty No.') {
@@ -522,7 +571,6 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         const element = document.getElementById('printArea');
         if (!element) return;
 
-        // Use updated html2canvas logic
         html2canvas(element, {
             scale: 2, 
             useCORS: true,
@@ -533,7 +581,6 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
                     alert('Image generation failed.');
                     return;
                 }
-
                 const file = new File([blob], "MyRoster.png", { type: "image/png" });
 
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -542,7 +589,6 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
                         title: 'Weekly Roster',
                         text: 'My Duty Roster'
                     }).catch(err => {
-                        console.error("Share failed:", err);
                         fallbackDownload(canvas);
                     });
                 } else {
@@ -556,7 +602,7 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
 
     function fallbackDownload(canvas) {
         if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-            alert('Cannot open share menu directly. Image will download instead.');
+            alert('無法直接打開分享選單。圖片已改為下載/開啟，請手動發送。');
         }
         const link = document.createElement('a');
         link.download = 'WeeklyRoster.png';
