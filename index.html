@@ -129,6 +129,61 @@
             .cell-duty { font-size: 16pt; }
             .cell-rest { font-size: 16pt; }
         }
+    
+    /* === USER REQUESTED PRINT STYLES V42 === */
+    #printView {
+        background: white !important;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000;
+        display: none; flex-direction: column; align-items: center; justify-content: flex-start;
+        padding-top: 10px; /* 極少 padding，盡量貼頂 */
+    }
+    #printArea {
+        width: 100%; max-width: 1400px; /* 寬度全開 */
+        background: white;
+        padding: 10px 20px;
+        box-shadow: none;
+    }
+    /* 表格標題 */
+    #printArea h2 {
+        font-size: 48px !important; /* 特大標題 */
+        margin: 0 0 10px 0 !important;
+        padding: 0 !important;
+        text-align: center;
+    }
+    /* 表格本體 */
+    #printTable {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 5px;
+    }
+    #printTable th, #printTable td {
+        border: 3px solid #000 !important; /* 加粗邊框 */
+        font-size: 34px !important; /* 特大內容字體 */
+        height: 85px !important; /* 拉高每行高度 */
+        padding: 5px !important;
+        text-align: center;
+        vertical-align: middle;
+        font-weight: bold !important; /* 全粗體 */
+        color: #000 !important;
+    }
+    #printTable th {
+        background-color: #f0f0f0 !important;
+        font-size: 36px !important; /* 表頭字體更大 */
+    }
+    /* 特別針對 Meal Box 紅字 */
+    #printTable td span[style*="color: red"] {
+        color: red !important;
+        font-weight: 900 !important;
+        font-size: 40px !important; /* 紅字特別大 */
+    }
+    /* 隱藏網頁版多餘元素 */
+    @media print {
+        body * { visibility: hidden; }
+        #printView, #printView * { visibility: visible; }
+        #printView { position: absolute; left: 0; top: 0; display: flex !important; }
+        .no-print { display: none !important; }
+    }
+    /* === END USER STYLES === */
     </style>
 </head>
 <body>
@@ -322,7 +377,7 @@
 
     function saveImage() {
         const element = document.getElementById("printArea");
-        const options = { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: 1400 };
+        const options = { scale: 3, useCORS: true, backgroundColor: "#ffffff", windowWidth: 1400 };
         html2canvas(element, options).then(canvas => { const link = document.createElement("a"); link.download = `Weekly_Roster_${state.start}.png`; link.href = canvas.toDataURL(); link.click(); });
     }
     function shareTG() {
