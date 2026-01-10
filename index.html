@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MTR Duty Planner v3.9</title>
+    <title>MTR Duty Planner v4.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -33,9 +33,11 @@
         .label { display: block; font-size: 13px; font-weight: 500; color: var(--text-sec); text-transform: uppercase; margin-bottom: 8px; }
         .input-text { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--sep); font-size: 17px; background: #fff; -webkit-appearance: none; color: #000; }
 
-        .duty-row { display: flex; align-items: center; margin-bottom: 12px; }
+        .duty-row { display: flex; align-items: center; margin-bottom: 12px; gap: 8px; }
         .day-label { width: 45px; font-size: 15px; font-weight: 600; color: var(--text-sec); }
         .duty-input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--sep); font-size: 17px; font-family: monospace; font-weight: 600; -webkit-appearance: none; background: #fff; color: #000; text-transform: uppercase; }
+        .meal-checkbox { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-sec); white-space: nowrap; }
+        .meal-checkbox input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; }
 
         .btn-row { display: flex; gap: 12px; margin-top: 30px; }
         .btn { flex: 1; padding: 14px; border-radius: 12px; border: none; font-size: 17px; font-weight: 600; text-align: center; cursor: pointer; }
@@ -75,7 +77,6 @@
         .fab-btn.sec { background: #fff; color: var(--primary); border: 1px solid #c6c6c8; }
         .hidden { display: none !important; }
 
-        /* PRINT & SHARE */
         #printView {
             display: none;
             padding: 0;
@@ -245,12 +246,6 @@
                 </thead>
                 <tbody id="printBody"></tbody>
             </table>
-        </div>
-
-        <div id="manualLink" style="display:none; text-align:center; margin-top:20px; padding:20px; background:#fff; border-radius:12px;">
-            <p>Download ready:</p>
-            <a id="downloadAnchor" href="#" target="_blank">Click here to download</a>
-            <button onclick="document.getElementById('manualLink').style.display='none'" style="margin-top:10px; padding:8px 16px; background:#eee; border:none; border-radius:8px;">Close</button>
         </div>
     </div>
 </div>
@@ -463,16 +458,65 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         }
     };
 
+    // --- MEAL BOX SUPPORT + ENHANCED STATE ---
+
+    // Initialize meal box state if not exists
+    if (!state.mealboxes) {
+        state.mealboxes = [false, false, false, false, false, false, false];
+    }
+
+    // Override renderInputs to include meal box checkboxes
+    const _originalRenderInputs = window.renderInputs || function() {};
+
+    window.renderInputs = function() {
+        const container = document.getElementById('inputContainer');
+        if (!container) return;
+
+        container.innerHTML = '';
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+        days.forEach((day, i) => {
+            const div = document.createElement('div');
+            div.className = 'duty-row';
+            div.innerHTML = `
+                <span class="day-label">${day}</span>
+                <input type="text" class="duty-input" id="in-${i}" placeholder="DUTY / R / L" value="${state.inputs[i] || ''}">
+                <label class="meal-checkbox">
+                    <input type="checkbox" id="meal-${i}" ${state.mealboxes[i] ? 'checked' : ''}>
+                    <span>🍱</span>
+                </label>
+            `;
+            container.appendChild(div);
+
+            // Event listeners
+            const input = div.querySelector(`#in-${i}`);
+            const checkbox = div.querySelector(`#meal-${i}`);
+
+            input.addEventListener('change', function() {
+                state.inputs[i] = this.value.toUpperCase().trim();
+            });
+
+            checkbox.addEventListener('change', function() {
+                state.mealboxes[i] = this.checked;
+            });
+        });
+    };
+
+    // Call enhanced renderInputs on load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', renderInputs);
+    } else {
+        renderInputs();
+    }
+
     // --- FIXED HELPERS FOR TIME PARSING ---
     function _parseTime(t) {
         if (!t) return null;
         t = String(t).trim();
-        // If already HH:MM
         if (t.includes(':')) {
             const p = t.split(':');
             return { h: parseInt(p[0]), m: parseInt(p[1]), str: t };
         }
-        // If HHMM
         if (t.length >= 3) {
             const h = t.substring(0, t.length - 2);
             const m = t.substring(t.length - 2);
@@ -489,7 +533,7 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         let m1 = t1.h * 60 + t1.m;
         let m2 = t2.h * 60 + t2.m;
 
-        if (m2 < m1) m2 += 24 * 60; // Overnight
+        if (m2 < m1) m2 += 24 * 60;
 
         let diff = m2 - m1;
         let h = Math.floor(diff / 60);
@@ -510,7 +554,7 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         return weekNo;
     }
 
-    // --- OVERRIDES FOR PRINT & SHARE ---
+    // --- PRINT & SHARE FUNCTIONS ---
 
     function showPrintTable() {
         document.getElementById('printView').style.display = 'block';
@@ -526,18 +570,17 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         const weekNum = _getWeekNumber(d);
         document.getElementById('printTitle').innerText = `Duty of Week ${weekNum}/${d.getFullYear()}`;
 
-        const rosterData = state.inputs.map(val => {
+        const rosterData = state.inputs.map((val, idx) => {
             val = (val || '').trim().toUpperCase();
-            let item = { id: val, on: '', off: '', dur: '', isRest: false };
+            let item = { id: val, on: '', off: '', dur: '', isRest: false, hasMealBox: state.mealboxes[idx] || false };
 
             if (['R','L','AL','SL','PH','VL','OFF'].includes(val)) {
                 item.isRest = true;
             } else if (val && RAW_DB[val]) {
                 const r = RAW_DB[val];
-                // Use FIXED helpers
                 item.on = _formatTime(r.book_on || r.bookon); 
                 item.off = _formatTime(r.book_off || r.bookoff);
-                item.dur = _calcDur(item.on, item.off); // Use FIXED calcDur
+                item.dur = _calcDur(item.on, item.off);
             }
             return item;
         });
@@ -545,7 +588,7 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         const tbody = document.getElementById('printBody');
         tbody.innerHTML = '';
 
-        const rowTypes = ['Date', 'Duty No.', 'Book On', 'Book Off', 'Work Hrs'];
+        const rowTypes = ['Date', 'Duty No.', 'Book On', 'Book Off', 'Work Hrs', 'Meal Box'];
 
         rowTypes.forEach(type => {
             const tr = document.createElement('tr');
@@ -578,6 +621,9 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
                     td.innerText = item.isRest ? '' : item.off;
                 } else if (type === 'Work Hrs') {
                     td.innerText = item.isRest ? '' : item.dur;
+                } else if (type === 'Meal Box') {
+                    td.innerText = item.hasMealBox ? '✓' : '';
+                    td.style.fontSize = '18px';
                 }
                 tr.appendChild(td);
             });
@@ -596,7 +642,7 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         }).then(canvas => {
             canvas.toBlob(blob => {
                 if (!blob) {
-                    alert('Image generation failed.');
+                    alert('圖片生成失敗，請重試。');
                     return;
                 }
                 const file = new File([blob], "MyRoster.png", { type: "image/png" });
