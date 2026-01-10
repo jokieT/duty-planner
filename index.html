@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MTR Duty Planner v4.0</title>
+    <title>MTR Duty Planner v4.1</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -139,14 +139,23 @@
         .action-btn.tg { background: #24A1DE; }
         .action-btn.prt { background: #34c759; }
 
+
+        /* SINGLE PAGE PRINT FIX */
         @media print {
             @page { 
                 size: A4 landscape; 
-                margin: 5mm;
+                margin: 5mm; 
             }
-            html, body { width: 100%; height: 100%; padding: 0; margin: 0; background: white; }
-            body * { visibility: hidden; }
 
+            html, body { 
+                width: 100%; 
+                height: 100%; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                overflow: hidden; /* Key to preventing 2nd page */
+            }
+
+            body * { visibility: hidden; }
             #printView, #printView * { visibility: visible; }
 
             #printView {
@@ -155,43 +164,47 @@
                 top: 0;
                 width: 100%;
                 height: 100%;
-                padding: 0;
                 margin: 0;
-                background: #fff;
-                overflow: hidden;
+                padding: 0;
+                background: white;
+                display: block !important;
             }
 
             .print-container {
                 width: 100%;
-                height: 100%;
+                height: auto;
                 margin: 0;
-                padding: 0;
-                box-shadow: none;
-                display: flex;
-                flex-direction: column;
-                justify-content: flex-start;
+                padding: 10px;
+                display: block;
             }
 
-            .print-actions { display: none; }
+            .print-actions { display: none !important; }
 
             .print-table {
                 width: 100%;
                 font-size: 16pt;
                 font-weight: bold;
                 table-layout: fixed;
+                border-collapse: collapse;
+                margin-bottom: 0; /* No bottom margin */
             }
 
             .print-table th, .print-table td {
-                padding: 4px 2px;
+                padding: 6px 4px;
                 font-size: 16pt;
                 font-weight: bold;
             }
 
-            .print-header { margin-top: 0; margin-bottom: 5px; font-size: 24pt; }
+            .print-header { 
+                margin-top: 0; 
+                margin-bottom: 10px; 
+                font-size: 24pt; 
+                text-align: center;
+            }
 
-            .cell-duty { font-size: 22pt !important; } 
-            .cell-rest { font-size: 22pt !important; }
+            #manualLink, #fab { display: none !important; }
         }
+
     </style>
 </head>
 <body>
@@ -460,12 +473,10 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
 
     // --- MEAL BOX SUPPORT + ENHANCED STATE ---
 
-    // Initialize meal box state if not exists
     if (!state.mealboxes) {
         state.mealboxes = [false, false, false, false, false, false, false];
     }
 
-    // Override renderInputs to include meal box checkboxes
     const _originalRenderInputs = window.renderInputs || function() {};
 
     window.renderInputs = function() {
@@ -488,7 +499,6 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
             `;
             container.appendChild(div);
 
-            // Event listeners
             const input = div.querySelector(`#in-${i}`);
             const checkbox = div.querySelector(`#meal-${i}`);
 
@@ -502,14 +512,12 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         });
     };
 
-    // Call enhanced renderInputs on load
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', renderInputs);
     } else {
         renderInputs();
     }
 
-    // --- FIXED HELPERS FOR TIME PARSING ---
     function _parseTime(t) {
         if (!t) return null;
         t = String(t).trim();
@@ -553,8 +561,6 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
         return weekNo;
     }
-
-    // --- PRINT & SHARE FUNCTIONS ---
 
     function showPrintTable() {
         document.getElementById('printView').style.display = 'block';
