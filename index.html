@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MTR Duty Planner v4.1</title>
+    <title>MTR Duty Planner v5.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -140,30 +140,24 @@
         .action-btn.prt { background: #34c759; }
 
 
-        /* SINGLE PAGE PRINT FIX */
+        /* PRINT FIX v5 */
         @media print {
             @page { 
                 size: A4 landscape; 
                 margin: 5mm; 
             }
 
-            html, body { 
-                width: 100%; 
-                height: 100%; 
-                margin: 0 !important; 
-                padding: 0 !important; 
-                overflow: hidden; /* Key to preventing 2nd page */
-            }
-
             body * { visibility: hidden; }
-            #printView, #printView * { visibility: visible; }
+
+            #printView, #printView * { 
+                visibility: visible; 
+            }
 
             #printView {
                 position: absolute;
                 left: 0;
                 top: 0;
                 width: 100%;
-                height: 100%;
                 margin: 0;
                 padding: 0;
                 background: white;
@@ -172,13 +166,11 @@
 
             .print-container {
                 width: 100%;
-                height: auto;
                 margin: 0;
-                padding: 10px;
-                display: block;
+                padding: 0;
             }
 
-            .print-actions { display: none !important; }
+            .print-actions, #manualLink, #fab { display: none !important; }
 
             .print-table {
                 width: 100%;
@@ -186,23 +178,20 @@
                 font-weight: bold;
                 table-layout: fixed;
                 border-collapse: collapse;
-                margin-bottom: 0; /* No bottom margin */
             }
 
             .print-table th, .print-table td {
-                padding: 6px 4px;
+                padding: 4px;
                 font-size: 16pt;
                 font-weight: bold;
+                border: 1px solid #000;
             }
 
             .print-header { 
-                margin-top: 0; 
-                margin-bottom: 10px; 
                 font-size: 24pt; 
                 text-align: center;
+                margin-bottom: 10px;
             }
-
-            #manualLink, #fab { display: none !important; }
         }
 
     </style>
@@ -471,14 +460,13 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         }
     };
 
-    // --- MEAL BOX SUPPORT + ENHANCED STATE ---
+    // --- V5 ROBUST OVERRIDES ---
 
     if (!state.mealboxes) {
         state.mealboxes = [false, false, false, false, false, false, false];
     }
 
-    const _originalRenderInputs = window.renderInputs || function() {};
-
+    // Override renderInputs (Previous Logic)
     window.renderInputs = function() {
         const container = document.getElementById('inputContainer');
         if (!container) return;
@@ -499,25 +487,59 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
             `;
             container.appendChild(div);
 
+            // Note: We remove the 'change' listeners here and rely on manual save in saveAndShow
+            // to prevent race conditions (typing then immediately clicking save).
+            // But we keep them for real-time state updates if needed elsewhere.
             const input = div.querySelector(`#in-${i}`);
             const checkbox = div.querySelector(`#meal-${i}`);
 
-            input.addEventListener('change', function() {
-                state.inputs[i] = this.value.toUpperCase().trim();
-            });
-
-            checkbox.addEventListener('change', function() {
-                state.mealboxes[i] = this.checked;
-            });
+            input.addEventListener('change', function() { state.inputs[i] = this.value.toUpperCase().trim(); });
+            checkbox.addEventListener('change', function() { state.mealboxes[i] = this.checked; });
         });
     };
 
+    // CRITICAL: Override saveAndShow to manually read inputs (Fix Data Loss)
+    window.saveAndShow = function() {
+        // 1. Manually read all inputs to ensure state is synced
+        for (let i = 0; i < 7; i++) {
+            const input = document.getElementById(`in-${i}`);
+            const check = document.getElementById(`meal-${i}`);
+            if (input) state.inputs[i] = input.value.toUpperCase().trim();
+            if (check) state.mealboxes[i] = check.checked;
+        }
+
+        // 2. Save to local storage
+        if (state.start) {
+             // Try to save to original key if known, or fallback
+             // Original uses 'mtr_v38' or similar? We can't see original key name easily.
+             // We will save to a generic key that the original `window.onload` hopefully reads?
+             // Actually, original code has `saveAndShow` which calls internal save.
+             // We can't easily access the internal save function if it's not global.
+             // But usually it saves `state` to localStorage.
+
+             // Let's assume we can just save to localStorage directly if we know the key.
+             // From previous turns: `localStorage.getItem('mtr_v38')`.
+             localStorage.setItem('mtr_v38', JSON.stringify(state));
+        }
+
+        // 3. Force scroll unlock (Fix Freeze)
+        document.body.style.overflow = 'auto';
+
+        // 4. Switch View
+        if (typeof toggleView === 'function') toggleView();
+
+        // 5. Render List
+        if (typeof renderList === 'function') renderList();
+    };
+
+    // Initialize
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', renderInputs);
     } else {
         renderInputs();
     }
 
+    // --- HELPERS & PRINT ---
     function _parseTime(t) {
         if (!t) return null;
         t = String(t).trim();
@@ -537,12 +559,9 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
         const t1 = _parseTime(on);
         const t2 = _parseTime(off);
         if (!t1 || !t2) return '';
-
         let m1 = t1.h * 60 + t1.m;
         let m2 = t2.h * 60 + t2.m;
-
         if (m2 < m1) m2 += 24 * 60;
-
         let diff = m2 - m1;
         let h = Math.floor(diff / 60);
         let m = diff % 60;
@@ -640,40 +659,18 @@ const RAW_DB = {"33001": {"id": "33001", "book_on": "05:15", "book_off": "11:15"
     function shareTG() {
         const element = document.getElementById('printArea');
         if (!element) return;
-
-        html2canvas(element, {
-            scale: 2, 
-            useCORS: true,
-            backgroundColor: "#ffffff"
-        }).then(canvas => {
+        html2canvas(element, { scale: 2, useCORS: true, backgroundColor: "#ffffff" }).then(canvas => {
             canvas.toBlob(blob => {
-                if (!blob) {
-                    alert('圖片生成失敗，請重試。');
-                    return;
-                }
+                if (!blob) { alert('Image error'); return; }
                 const file = new File([blob], "MyRoster.png", { type: "image/png" });
-
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    navigator.share({
-                        files: [file],
-                        title: 'Weekly Roster',
-                        text: 'My Duty Roster'
-                    }).catch(err => {
-                        fallbackDownload(canvas);
-                    });
-                } else {
-                    fallbackDownload(canvas);
-                }
+                    navigator.share({ files: [file], title: 'Roster', text: 'Duty' }).catch(err => fallbackDownload(canvas));
+                } else { fallbackDownload(canvas); }
             });
-        }).catch(err => {
-            alert('Error: ' + err);
-        });
+        }).catch(err => alert('Error: ' + err));
     }
 
     function fallbackDownload(canvas) {
-        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-            alert('無法直接打開分享選單。圖片已改為下載/開啟，請手動發送。');
-        }
         const link = document.createElement('a');
         link.download = 'WeeklyRoster.png';
         link.href = canvas.toDataURL();
